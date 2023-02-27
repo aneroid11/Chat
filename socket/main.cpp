@@ -3,7 +3,6 @@
 #include <cstring>
 
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -38,6 +37,14 @@ int getUserChoice(const std::vector<std::string>& options)
     return option;
 }
 
+std::string getIpPortFromSockaddr(const sockaddr_in* sockAddr)
+{
+    char ip[INET_ADDRSTRLEN];
+    uint16_t port = htons(sockAddr->sin_port);
+    inet_ntop(AF_INET, &sockAddr->sin_addr, ip, sizeof(ip));
+    return std::string(ip) + ":" + std::to_string(port);
+}
+
 int main()
 {
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -61,9 +68,34 @@ int main()
             perror("Failed to bind the socket");
             exit(EXIT_FAILURE);
         }
+
+        std::cout << "Bound the socket successfully\n";
+        std::cout << "Waiting for connections...\n";
+    }
+    else
+    {
+        std::cout << "Trying to connect...\n";
+
+        char data[MAX_PACKET_LEN] = "hello world";
+        const size_t data_size = strlen(data) + 1;
+        sendto(socketFd, data, data_size, MSG_CONFIRM,
+               (const sockaddr*)&serverAddress, sizeof(serverAddress));
+        std::cout << "sent 'hello world' to other client\n";
     }
 
-    while (true) {}
+    while (true)
+    {
+        char buffer[MAX_PACKET_LEN];
+        sockaddr_in clientAddress {};
+        memset(&clientAddress, 0, sizeof(clientAddress));
+        socklen_t addrLen;
+        recvfrom(socketFd, buffer, MAX_PACKET_LEN, MSG_WAITALL,
+                 (sockaddr*)&clientAddress, &addrLen);
+
+        std::cout << "received data: " << buffer << "\n";
+
+        std::cout << "received from: ";
+    }
 
     close(socketFd);
     return 0;
