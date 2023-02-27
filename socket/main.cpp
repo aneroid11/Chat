@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <random>
 #include <cstring>
 
 #include <unistd.h>
@@ -45,10 +46,12 @@ std::string getIpPortFromSockaddr(const sockaddr_in* sockAddr)
     return std::string(ip) + ":" + std::to_string(port);
 }
 
-
-
 int main()
 {
+    std::random_device rd;
+    std::mt19937 mt(rd());
+    std::uniform_int_distribution<int> dist(1, 1000);
+
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socketFd < 0)
     {
@@ -91,6 +94,9 @@ int main()
         std::cout << "sent 'hello world' to other client\n";
     }
 
+    int msg_num = 0;
+    const int client_id = dist(mt);
+
     while (true)
     {
         char buffer[MAX_PACKET_LEN];
@@ -102,14 +108,20 @@ int main()
 
         std::cout << "received data: " << buffer << "\n";
 
+        std::string msg = "hello world ";
+        msg += std::to_string(msg_num) + " from " + std::to_string(client_id);
+        msg_num++;
+
         char data[MAX_PACKET_LEN] = "hello world 2";
         const size_t data_size = strlen(data) + 1;
 
         // sockaddr_in sendToAddress = weAreFirst ? clientAddress : serverAddress;
 
-        sendto(socketFd, data, data_size, MSG_CONFIRM,
-               (const sockaddr*)&clientAddress, sizeof(clientAddress));
-        std::cout << "sent 'hello world 2' to other client\n";
+        sendto(socketFd, msg.c_str(), msg.size(), MSG_CONFIRM,
+               (const sockaddr*)&clientAddress, addrLen);
+        /*sendto(socketFd, data, data_size, MSG_CONFIRM,
+               (const sockaddr*)&clientAddress, addrLen);*/
+        //std::cout << "sent 'hello world 2' to other client\n";
 
         usleep(100);
     }
