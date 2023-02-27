@@ -45,6 +45,8 @@ std::string getIpPortFromSockaddr(const sockaddr_in* sockAddr)
     return std::string(ip) + ":" + std::to_string(port);
 }
 
+
+
 int main()
 {
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -61,7 +63,9 @@ int main()
     serverAddress.sin_port = htons(PORT);
 
     // to bind or not to bind?
-    if (getUserChoice({"open a connection", "connect to a running client"}) == 0)
+    bool bindPort = getUserChoice({"open a connection", "connect to a running client"}) == 0;
+
+    if (bindPort)
     {
         if (bind(socketFd, (const sockaddr*)&serverAddress, sizeof(serverAddress)) < 0)
         {
@@ -75,7 +79,11 @@ int main()
     else
     {
         std::cout << "Trying to connect...\n";
+    }
 
+    if (!bindPort)
+    {
+        // send a message
         char data[MAX_PACKET_LEN] = "hello world";
         const size_t data_size = strlen(data) + 1;
         sendto(socketFd, data, data_size, MSG_CONFIRM,
@@ -94,7 +102,16 @@ int main()
 
         std::cout << "received data: " << buffer << "\n";
 
-        std::cout << "received from: ";
+        char data[MAX_PACKET_LEN] = "hello world 2";
+        const size_t data_size = strlen(data) + 1;
+
+        // sockaddr_in sendToAddress = weAreFirst ? clientAddress : serverAddress;
+
+        sendto(socketFd, data, data_size, MSG_CONFIRM,
+               (const sockaddr*)&clientAddress, sizeof(clientAddress));
+        std::cout << "sent 'hello world 2' to other client\n";
+
+        usleep(100);
     }
 
     close(socketFd);
