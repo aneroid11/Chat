@@ -2,6 +2,7 @@
 #include <vector>
 #include <random>
 #include <cstring>
+#include <chrono>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -10,6 +11,7 @@
 
 const int PORT = 8080;
 const int MAX_PACKET_LEN = 256;
+const int TIMEOUT_MS = 100;
 
 int getUserChoice(const std::vector<std::string>& options)
 {
@@ -46,6 +48,86 @@ std::string getIpPortFromSockaddr(const sockaddr_in* sockAddr)
     return std::string(ip) + ":" + std::to_string(port);
 }
 
+std::string currTimeMcs()
+{
+    //static auto startingPoint = std::chrono::high_resolution_clock::now();
+
+    auto now = std::chrono::high_resolution_clock::now();
+    return std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
+}
+
+ssize_t sendMsg(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
+{
+    return sendto(socketFd, msg.c_str(), msg.size() + 1, MSG_CONFIRM,
+                (const sockaddr*)&sockAddr, addrLen);
+}
+
+ssize_t receiveMsg(std::string& msg, const int socketFd, sockaddr_in& sockAddr, socklen_t& addrLen)
+{
+    memset(&sockAddr, 0, sizeof(sockAddr));
+    char buffer[MAX_PACKET_LEN];
+    addrLen = sizeof(sockaddr_in);
+    ssize_t code = recvfrom(socketFd, buffer, MAX_PACKET_LEN, MSG_WAITALL,
+                        (sockaddr*)&sockAddr, &addrLen);
+    msg = buffer;
+    return code;
+}
+
+void sendWithValidation(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
+{
+    std::cout << "sendWithValidation() start\n";
+    bool okNotReceived = false;
+
+    do
+    {
+        std::cout << "sendMsg()\n";
+        if (sendMsg(msg, socketFd, sockAddr, addrLen) < 0)
+        {
+            continue;
+        }
+
+        std::string recMsg;
+        sockaddr_in addr {};
+        socklen_t len;
+        std::cout << "before receiveMsg()\n";
+        okNotReceived = receiveMsg(recMsg, socketFd, addr, len) < 0 || recMsg != "ok";
+        std::cout << "after receiveMsg()\n";
+    } while (okNotReceived);
+
+    std::cout << "sendMsg(ok)\n";
+    sendMsg("ok", socketFd, sockAddr, addrLen);
+
+    std::cout << "sendWithValidation() finished\n";
+}
+
+void receiveWithValidation(std::string& msg, const int socketFd, sockaddr_in& sockAddr, socklen_t& sockLen)
+{
+    while (true)
+    {
+        while (receiveMsg(msg, socketFd, sockAddr, sockLen) < 0) {}
+
+        if (msg == "ok") // not a message
+        {
+            sendMsg("ok", socketFd, sockAddr, sockLen);
+            continue;
+        }
+        break;
+    }
+
+    bool okNotReceived = false;
+
+    do
+    {
+        if (sendMsg("ok", socketFd, sockAddr, sockLen) < 0)
+        {
+            continue;
+        }
+
+        std::string buffer;
+        okNotReceived = receiveMsg(buffer, socketFd, sockAddr, sockLen) < 0 || buffer != "ok";
+    } while (okNotReceived);
+}
+
 int main()
 {
     std::random_device rd;
@@ -56,6 +138,13 @@ int main()
     if (socketFd < 0)
     {
         perror("failed to create socket");
+        exit(EXIT_FAILURE);
+    }
+
+    timeval tv {0, TIMEOUT_MS * 1000};
+    if (setsockopt(socketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+    {
+        perror("failed to set timeout option");
         exit(EXIT_FAILURE);
     }
 
@@ -86,12 +175,8 @@ int main()
 
     if (!bindPort)
     {
-        // send a message
-        char data[MAX_PACKET_LEN] = "hello world";
-        const size_t data_size = strlen(data) + 1;
-        sendto(socketFd, data, data_size, MSG_CONFIRM,
-               (const sockaddr*)&serverAddress, sizeof(serverAddress));
-        std::cout << "sent 'hello world' to other client\n";
+        //sendMsg("hello world", socketFd, serverAddress, sizeof(serverAddress));
+        sendWithValidation("first message", socketFd, serverAddress, sizeof(serverAddress));
     }
 
     int msg_num = 0;
@@ -99,31 +184,23 @@ int main()
 
     while (true)
     {
-        char buffer[MAX_PACKET_LEN];
+        std::cout << currTimeMcs() << " receiveMsg...\n";
         sockaddr_in clientAddress {};
-        memset(&clientAddress, 0, sizeof(clientAddress));
         socklen_t addrLen;
-        recvfrom(socketFd, buffer, MAX_PACKET_LEN, MSG_WAITALL,
-                 (sockaddr*)&clientAddress, &addrLen);
+        std::string msg;
+        receiveWithValidation(msg, socketFd, clientAddress, addrLen);
 
-        std::cout << "received data: " << buffer << "\n";
+        std::cout << currTimeMcs() << " receiveMsg finished.\n";
 
-        std::string msg = "hello world ";
-        msg += std::to_string(msg_num) + " from " + std::to_string(client_id);
+        std::cout << currTimeMcs() << " received data: " << msg << "\n";
+
+        std::string msgToSend = "hello world ";
+        msgToSend += std::to_string(msg_num) + " from " + std::to_string(client_id);
         msg_num++;
 
-        char data[MAX_PACKET_LEN] = "hello world 2";
-        const size_t data_size = strlen(data) + 1;
-
-        // sockaddr_in sendToAddress = weAreFirst ? clientAddress : serverAddress;
-
-        sendto(socketFd, msg.c_str(), msg.size(), MSG_CONFIRM,
-               (const sockaddr*)&clientAddress, addrLen);
-        /*sendto(socketFd, data, data_size, MSG_CONFIRM,
-               (const sockaddr*)&clientAddress, addrLen);*/
-        //std::cout << "sent 'hello world 2' to other client\n";
-
-        usleep(100);
+        std::cout << currTimeMcs() << " sendMsg...\n";
+        sendMsg(msgToSend, socketFd, clientAddress, addrLen);
+        std::cout << currTimeMcs() << " sendMsg finished.\n";
     }
 
     close(socketFd);
