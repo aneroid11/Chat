@@ -76,9 +76,39 @@ ssize_t receiveMsg(std::string& msg, const int socketFd, sockaddr_in& sockAddr, 
 
 ssize_t sendMsgAndReceiveOk(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
 {
-    std::cout << "sendMsgAndReceiveOk()\n";
-    return 0;
+    if (sendMsg(msg, socketFd, sockAddr, addrLen) < 0)
+    {
+        perror("sendto error");
+        exit(EXIT_FAILURE);
+    }
+
+    const int MAX_ATTEMPTS = 10;
+
+    for (int i = 0; i < MAX_ATTEMPTS; i++)
+    {
+        std::string recvMsg;
+        sockaddr_in addr {};
+        socklen_t len;
+
+        ssize_t ret = receiveMsg(recvMsg, socketFd, addr, len);
+        if (ret < 0)
+        {
+            // try again
+            continue;
+        }
+
+        if (recvMsg != "ok")
+        {
+            ret = -1;
+            continue;
+        }
+        return ret;
+    }
+
+    return -1;
 }
+
+ssize_t
 
 /*
 void sendWithValidation(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
@@ -203,10 +233,13 @@ int main()
             someAddr.sin_family = AF_INET;
             someAddr.sin_addr.s_addr = INADDR_ANY;
             someAddr.sin_port = htons(8080);
-            ssize_t result = sendMsg("msg", socketFd, someAddr, sizeof(sockaddr_in));
+            //ssize_t result = sendMsg("msg", socketFd, someAddr, sizeof(sockaddr_in));
 
-            // можно спокойно отправлять несуществующему клиенту, и это не вызовет ошибку.
-            std::cout << "result of sending: " << result << "\n";
+            // можно спокойно отправлять несуществующему клиенту, и это не вызовет ошибку send.
+            //std::cout << "result of sending: " << result << "\n";
+
+            std::cout << "result of sending:\n";
+            std::cout << sendMsgAndReceiveOk("msg", socketFd, someAddr, sizeof(sockaddr_in)) << "\n";
             /*std::string msg;
 
             if (receiveMsg(msg, socketFd, otherAddr, otherLen) < 0)
