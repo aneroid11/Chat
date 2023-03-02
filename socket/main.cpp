@@ -74,100 +74,21 @@ ssize_t receiveMsg(std::string& msg, const int socketFd, sockaddr_in& sockAddr, 
     return code;
 }
 
-ssize_t sendMsgAndReceiveOk(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
+int getIntInput(const std::string& prompt)
 {
-    if (sendMsg(msg, socketFd, sockAddr, addrLen) < 0)
+    std::cout << prompt;
+    int input;
+    std::cin >> input;
+
+    while (!std::cin)
     {
-        perror("sendto error");
-        exit(EXIT_FAILURE);
+        std::cerr << "Invalid input!\n";
+        std::cin >> input;
     }
 
-    const int MAX_ATTEMPTS = 10;
-
-    for (int i = 0; i < MAX_ATTEMPTS; i++)
-    {
-        std::string recvMsg;
-        sockaddr_in addr {};
-        socklen_t len;
-
-        ssize_t ret = receiveMsg(recvMsg, socketFd, addr, len);
-        if (ret < 0)
-        {
-            // try again
-            continue;
-        }
-
-        if (recvMsg != "ok")
-        {
-            ret = -1;
-            continue;
-        }
-        return ret;
-    }
-
-    return -1;
+    std::cin.get();
+    return input;
 }
-
-ssize_t
-
-/*
-void sendWithValidation(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
-{
-    bool okNotReceived = false;
-
-    do
-    {
-        if (sendMsg(msg, socketFd, sockAddr, addrLen) < 0)
-        {
-            continue;
-        }
-        std::cout << "sendWithValidation(): sent the message\n";
-
-        std::string recMsg;
-        sockaddr_in addr {};
-        socklen_t len;
-        okNotReceived = receiveMsg(recMsg, socketFd, addr, len) < 0 || recMsg != "ok";
-    } while (okNotReceived);
-
-    std::cout << "sendWithValidation(): received ok\n";
-
-    sendMsg("ok", socketFd, sockAddr, addrLen);
-
-    std::cout << "sendWithValidation(): sent ok\n";
-}
-
-void receiveWithValidation(std::string& msg, const int socketFd, sockaddr_in& sockAddr, socklen_t& sockLen)
-{
-    while (true)
-    {
-        while (receiveMsg(msg, socketFd, sockAddr, sockLen) < 0) {}
-
-        if (msg == "ok") // not a message
-        {
-            while (sendMsg("ok", socketFd, sockAddr, sockLen) < 0) {}
-            continue;
-        }
-        break;
-    }
-    std::cout << "receiveWithValidation(): received a message\n";
-
-    bool okNotReceived = false;
-
-    do
-    {
-        if (sendMsg("ok", socketFd, sockAddr, sockLen) < 0)
-        {
-            std::cout << "receiveWithValidation(): cannot send ok\n";
-            continue;
-        }
-        std::cout << "receiveWithValidation(): sent ok\n";
-
-        std::string buffer;
-        okNotReceived = receiveMsg(buffer, socketFd, sockAddr, sockLen) < 0 || buffer != "ok";
-    } while (okNotReceived);
-
-    std::cout << "receiveWithValidation(): received ok\n";
-}*/
 
 int main()
 {
@@ -212,132 +133,40 @@ int main()
     const int ourPort = htons(addr.sin_port);
     std::cout << "Bound to port " << ourPort << "\n";
 
-    sockaddr_in otherAddr {};
-    socklen_t otherLen;
-
     while (true)
     {
-        int choice = getUserChoice({"check for connections", "connect to the other client"});
+        int choice = getUserChoice({"show incoming messages", "send a message"});
+
         if (choice == 0)
         {
-            // просмотреть, есть ли отправленные на наш сокет запросы на коннект
-            // а сам коннект будет состоять в том, что каждые 30 секунд клиент отправляет
-            // сообщение, что он ещё живой (если он не отправлял сообщений последние 30 секунд)
-            // если ответ ok на сообщение о живости не пришёл (10 раз подряд), то тот клиент отключился
-            // если соединение потеряно, то надо вернуться в состояние WAITING
-            // ...состояние? это конечный автомат должен быть?
-            std::cout << "Check for connections\n";
+            std::string msg;
+            sockaddr_in addrBuf {};
+            socklen_t lenBuf;
 
-            sockaddr_in someAddr {};
-            memset(&someAddr, 0, sizeof(someAddr));
-            someAddr.sin_family = AF_INET;
-            someAddr.sin_addr.s_addr = INADDR_ANY;
-            someAddr.sin_port = htons(8080);
-            //ssize_t result = sendMsg("msg", socketFd, someAddr, sizeof(sockaddr_in));
-
-            // можно спокойно отправлять несуществующему клиенту, и это не вызовет ошибку send.
-            //std::cout << "result of sending: " << result << "\n";
-
-            std::cout << "result of sending:\n";
-            std::cout << sendMsgAndReceiveOk("msg", socketFd, someAddr, sizeof(sockaddr_in)) << "\n";
-            /*std::string msg;
-
-            if (receiveMsg(msg, socketFd, otherAddr, otherLen) < 0)
+            while (receiveMsg(msg, socketFd, addrBuf, lenBuf) >= 0)
             {
-                // no connections
-                std::cout << "No connection requests.\n";
-                continue;
+                std::cout << "Message from " << getIpPortFromSockaddr(addrBuf) << ":\n";
+                std::cout << msg << "\n";
             }
-            else
-            {
-                // send 'ok' to the first, send 'busy' to others
-                sendMsg("ok", socketFd, otherAddr, otherLen);
-
-                sockaddr_in buffer {};
-                socklen_t bufferLen;
-                while (receiveMsg(msg, socketFd, buffer, bufferLen) >= 0)
-                {
-                    sendMsg("busy", socketFd, otherAddr, otherLen);
-                }
-
-                std::cout << "Connected to " << getIpPortFromSockaddr(otherAddr) << "\n";
-                break;
-            }*/
         }
         else
         {
-            std::cout << "Connect to a client online\n";
-            /*int port;
-            std::cout << "Enter the port of the other client: ";
-            do
-            {
-                std::cin >> port;
-            } while (!std::cin);
+            const int port = getIntInput("Enter the port of the other client: ");
 
-            memset(&otherAddr, 0, sizeof(otherAddr));
-            otherAddr.sin_family = AF_INET;
-            otherAddr.sin_addr.s_addr = INADDR_ANY;
-            otherAddr.sin_port = htons(port);
+            sockaddr_in otherAddress {};
+            memset(&otherAddress, 0, sizeof(otherAddress));
+            otherAddress.sin_family = AF_INET;
+            otherAddress.sin_addr.s_addr = INADDR_ANY;
+            otherAddress.sin_port = htons(port);
 
-            std::cout << "Trying to connect...\n";
-            sendMsg("pls connect", socketFd, otherAddr, sizeof(otherAddr));*/
+            std::string message;
+            std::cout << "Enter the message: ";
+            std::getline(std::cin, message);
+
+            sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
+            std::cout << "Message sent.\n";
         }
     }
-
-    /*
-    int choice = getUserChoice({"send a message", "show incoming messages"});
-    if (choice == 0)
-    {
-
-    }
-    else
-    {
-
-    }*/
-
-    /*
-    // to bind or not to bind?
-    bool bindPort = getUserChoice({"open a connection", "connect to a running client"}) == 0;
-
-    if (bindPort)
-    {
-        if (bind(socketFd, (const sockaddr*)&serverAddress, sizeof(serverAddress)) < 0)
-        {
-            perror("Failed to bind the socket");
-            exit(EXIT_FAILURE);
-        }
-
-        std::cout << "Bound the socket successfully\n";
-        std::cout << "Waiting for connections...\n";
-    }
-    else
-    {
-        std::cout << "Trying to connect...\n";
-    }*/
-
-    /*
-    if (!bindPort)
-    {
-        std::string msg;
-        std::cout << "Enter your message: ";
-        std::getline(std::cin, msg);
-        sendWithValidation(msg, socketFd, ourAddress, sizeof(ourAddress));
-    }
-
-    while (true)
-    {
-        sockaddr_in clientAddress {};
-        socklen_t addrLen;
-        std::string msg;
-        receiveWithValidation(msg, socketFd, clientAddress, addrLen);
-
-        std::cout << "Received message: " << msg << " from " << getIpPortFromSockaddr(clientAddress) << "\n";
-
-        std::string msgToSend;
-        std::cout << "Enter your message: ";
-        std::getline(std::cin, msgToSend);
-        sendWithValidation(msgToSend, socketFd, clientAddress, addrLen);
-    }*/
 
     close(socketFd);
     return 0;
