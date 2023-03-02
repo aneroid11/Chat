@@ -74,6 +74,13 @@ ssize_t receiveMsg(std::string& msg, const int socketFd, sockaddr_in& sockAddr, 
     return code;
 }
 
+ssize_t sendMsgAndReceiveOk(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
+{
+    std::cout << "sendMsgAndReceiveOk()\n";
+    return 0;
+}
+
+/*
 void sendWithValidation(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
 {
     bool okNotReceived = false;
@@ -130,7 +137,7 @@ void receiveWithValidation(std::string& msg, const int socketFd, sockaddr_in& so
     } while (okNotReceived);
 
     std::cout << "receiveWithValidation(): received ok\n";
-}
+}*/
 
 int main()
 {
@@ -174,6 +181,86 @@ int main()
     }
     const int ourPort = htons(addr.sin_port);
     std::cout << "Bound to port " << ourPort << "\n";
+
+    sockaddr_in otherAddr {};
+    socklen_t otherLen;
+
+    while (true)
+    {
+        int choice = getUserChoice({"check for connections", "connect to the other client"});
+        if (choice == 0)
+        {
+            // просмотреть, есть ли отправленные на наш сокет запросы на коннект
+            // а сам коннект будет состоять в том, что каждые 30 секунд клиент отправляет
+            // сообщение, что он ещё живой (если он не отправлял сообщений последние 30 секунд)
+            // если ответ ok на сообщение о живости не пришёл (10 раз подряд), то тот клиент отключился
+            // если соединение потеряно, то надо вернуться в состояние WAITING
+            // ...состояние? это конечный автомат должен быть?
+            std::cout << "Check for connections\n";
+
+            sockaddr_in someAddr {};
+            memset(&someAddr, 0, sizeof(someAddr));
+            someAddr.sin_family = AF_INET;
+            someAddr.sin_addr.s_addr = INADDR_ANY;
+            someAddr.sin_port = htons(8080);
+            ssize_t result = sendMsg("msg", socketFd, someAddr, sizeof(sockaddr_in));
+
+            // можно спокойно отправлять несуществующему клиенту, и это не вызовет ошибку.
+            std::cout << "result of sending: " << result << "\n";
+            /*std::string msg;
+
+            if (receiveMsg(msg, socketFd, otherAddr, otherLen) < 0)
+            {
+                // no connections
+                std::cout << "No connection requests.\n";
+                continue;
+            }
+            else
+            {
+                // send 'ok' to the first, send 'busy' to others
+                sendMsg("ok", socketFd, otherAddr, otherLen);
+
+                sockaddr_in buffer {};
+                socklen_t bufferLen;
+                while (receiveMsg(msg, socketFd, buffer, bufferLen) >= 0)
+                {
+                    sendMsg("busy", socketFd, otherAddr, otherLen);
+                }
+
+                std::cout << "Connected to " << getIpPortFromSockaddr(otherAddr) << "\n";
+                break;
+            }*/
+        }
+        else
+        {
+            std::cout << "Connect to a client online\n";
+            /*int port;
+            std::cout << "Enter the port of the other client: ";
+            do
+            {
+                std::cin >> port;
+            } while (!std::cin);
+
+            memset(&otherAddr, 0, sizeof(otherAddr));
+            otherAddr.sin_family = AF_INET;
+            otherAddr.sin_addr.s_addr = INADDR_ANY;
+            otherAddr.sin_port = htons(port);
+
+            std::cout << "Trying to connect...\n";
+            sendMsg("pls connect", socketFd, otherAddr, sizeof(otherAddr));*/
+        }
+    }
+
+    /*
+    int choice = getUserChoice({"send a message", "show incoming messages"});
+    if (choice == 0)
+    {
+
+    }
+    else
+    {
+
+    }*/
 
     /*
     // to bind or not to bind?
