@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-const int PORT = 8080;
+//const int PORT = 8080;
 const int MAX_PACKET_LEN = 256;
 const int TIMEOUT_MS = 100;
 
@@ -37,14 +37,15 @@ int getUserChoice(const std::vector<std::string>& options)
         break;
     }
 
+    std::cin.get();
     return option;
 }
 
-std::string getIpPortFromSockaddr(const sockaddr_in* sockAddr)
+std::string getIpPortFromSockaddr(const sockaddr_in& sockAddr)
 {
     char ip[INET_ADDRSTRLEN];
-    uint16_t port = htons(sockAddr->sin_port);
-    inet_ntop(AF_INET, &sockAddr->sin_addr, ip, sizeof(ip));
+    uint16_t port = htons(sockAddr.sin_port);
+    inet_ntop(AF_INET, &sockAddr.sin_addr, ip, sizeof(ip));
     return std::string(ip) + ":" + std::to_string(port);
 }
 
@@ -75,29 +76,27 @@ ssize_t receiveMsg(std::string& msg, const int socketFd, sockaddr_in& sockAddr, 
 
 void sendWithValidation(const std::string& msg, const int socketFd, const sockaddr_in& sockAddr, const socklen_t addrLen)
 {
-    std::cout << "sendWithValidation() start\n";
     bool okNotReceived = false;
 
     do
     {
-        std::cout << "sendMsg()\n";
         if (sendMsg(msg, socketFd, sockAddr, addrLen) < 0)
         {
             continue;
         }
+        std::cout << "sendWithValidation(): sent the message\n";
 
         std::string recMsg;
         sockaddr_in addr {};
         socklen_t len;
-        std::cout << "before receiveMsg()\n";
         okNotReceived = receiveMsg(recMsg, socketFd, addr, len) < 0 || recMsg != "ok";
-        std::cout << "after receiveMsg()\n";
     } while (okNotReceived);
 
-    std::cout << "sendMsg(ok)\n";
+    std::cout << "sendWithValidation(): received ok\n";
+
     sendMsg("ok", socketFd, sockAddr, addrLen);
 
-    std::cout << "sendWithValidation() finished\n";
+    std::cout << "sendWithValidation(): sent ok\n";
 }
 
 void receiveWithValidation(std::string& msg, const int socketFd, sockaddr_in& sockAddr, socklen_t& sockLen)
@@ -108,11 +107,12 @@ void receiveWithValidation(std::string& msg, const int socketFd, sockaddr_in& so
 
         if (msg == "ok") // not a message
         {
-            sendMsg("ok", socketFd, sockAddr, sockLen);
+            while (sendMsg("ok", socketFd, sockAddr, sockLen) < 0) {}
             continue;
         }
         break;
     }
+    std::cout << "receiveWithValidation(): received a message\n";
 
     bool okNotReceived = false;
 
@@ -120,19 +120,23 @@ void receiveWithValidation(std::string& msg, const int socketFd, sockaddr_in& so
     {
         if (sendMsg("ok", socketFd, sockAddr, sockLen) < 0)
         {
+            std::cout << "receiveWithValidation(): cannot send ok\n";
             continue;
         }
+        std::cout << "receiveWithValidation(): sent ok\n";
 
         std::string buffer;
         okNotReceived = receiveMsg(buffer, socketFd, sockAddr, sockLen) < 0 || buffer != "ok";
     } while (okNotReceived);
+
+    std::cout << "receiveWithValidation(): received ok\n";
 }
 
 int main()
 {
-    std::random_device rd;
+    /*std::random_device rd;
     std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> dist(1, 1000);
+    std::uniform_int_distribution<int> dist(1, 1000);*/
 
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socketFd < 0)
@@ -148,12 +152,30 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    sockaddr_in serverAddress {};
-    memset(&serverAddress, 0, sizeof(serverAddress));
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-    serverAddress.sin_port = htons(PORT);
+    sockaddr_in ourAddress {};
+    memset(&ourAddress, 0, sizeof(ourAddress));
+    ourAddress.sin_family = AF_INET;
+    ourAddress.sin_addr.s_addr = INADDR_ANY;
+    ourAddress.sin_port = htons(0); // any available port
 
+    if (bind(socketFd, (const sockaddr*)&ourAddress, sizeof(ourAddress)) < 0)
+    {
+        perror("Failed to bind the socket");
+        exit(EXIT_FAILURE);
+    }
+
+    sockaddr_in addr {};
+    socklen_t len = sizeof(sockaddr_in);
+
+    if (getsockname(socketFd, (sockaddr*)&addr, &len) < 0)
+    {
+        perror("Failed to get socket name");
+        exit(EXIT_FAILURE);
+    }
+    const int ourPort = htons(addr.sin_port);
+    std::cout << "Bound to port " << ourPort << "\n";
+
+    /*
     // to bind or not to bind?
     bool bindPort = getUserChoice({"open a connection", "connect to a running client"}) == 0;
 
@@ -171,37 +193,31 @@ int main()
     else
     {
         std::cout << "Trying to connect...\n";
-    }
+    }*/
 
+    /*
     if (!bindPort)
     {
-        //sendMsg("hello world", socketFd, serverAddress, sizeof(serverAddress));
-        sendWithValidation("first message", socketFd, serverAddress, sizeof(serverAddress));
+        std::string msg;
+        std::cout << "Enter your message: ";
+        std::getline(std::cin, msg);
+        sendWithValidation(msg, socketFd, ourAddress, sizeof(ourAddress));
     }
-
-    int msg_num = 0;
-    const int client_id = dist(mt);
 
     while (true)
     {
-        std::cout << currTimeMcs() << " receiveMsg...\n";
         sockaddr_in clientAddress {};
         socklen_t addrLen;
         std::string msg;
         receiveWithValidation(msg, socketFd, clientAddress, addrLen);
 
-        std::cout << currTimeMcs() << " receiveMsg finished.\n";
+        std::cout << "Received message: " << msg << " from " << getIpPortFromSockaddr(clientAddress) << "\n";
 
-        std::cout << currTimeMcs() << " received data: " << msg << "\n";
-
-        std::string msgToSend = "hello world ";
-        msgToSend += std::to_string(msg_num) + " from " + std::to_string(client_id);
-        msg_num++;
-
-        std::cout << currTimeMcs() << " sendMsg...\n";
-        sendMsg(msgToSend, socketFd, clientAddress, addrLen);
-        std::cout << currTimeMcs() << " sendMsg finished.\n";
-    }
+        std::string msgToSend;
+        std::cout << "Enter your message: ";
+        std::getline(std::cin, msgToSend);
+        sendWithValidation(msgToSend, socketFd, clientAddress, addrLen);
+    }*/
 
     close(socketFd);
     return 0;
