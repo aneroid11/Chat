@@ -62,8 +62,6 @@ std::string getIpPortFromSockaddr(const sockaddr_in& sockAddr)
 
 std::string currTimeMcs()
 {
-    //static auto startingPoint = std::chrono::high_resolution_clock::now();
-
     auto now = std::chrono::high_resolution_clock::now();
     return std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
 }
@@ -89,12 +87,12 @@ int getIntInput(const std::string& prompt)
 {
     std::cout << prompt;
     int input;
-    std::cin >> input;
 
-    while (!std::cin)
+    while (!(std::cin >> input))
     {
-        std::cerr << "Invalid input!\n";
-        std::cin >> input;
+        std::cerr << "Invalid input! Please try again: ";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<int>::max(), '\n');
     }
 
     std::cin.get();
