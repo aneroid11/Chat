@@ -22,18 +22,29 @@ int getUserChoice(const std::vector<std::string>& options)
         std::cout << i << " - " << options[i] << "\n";
     }
 
+    std::string optionStr;
     int option;
 
     while (true)
     {
         std::cout << "Choose an option: ";
-        std::cin >> option;
+        std::cin >> optionStr;
 
-        if (!std::cin || option < 0 || option >= numOptions)
+        try
+        {
+            option = std::stoi(optionStr);
+        }
+        catch (const std::exception& e)
         {
             std::cout << "Invalid input!\n";
             continue;
         }
+        if (option < 0 || option >= numOptions)
+        {
+            std::cout << "Option index out of range!\n";
+            continue;
+        }
+
         break;
     }
 
