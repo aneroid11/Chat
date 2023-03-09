@@ -1,6 +1,7 @@
 #include <iostream>
+#include <sstream>
 #include <vector>
-#include <random>
+//#include <random>
 #include <cstring>
 #include <chrono>
 
@@ -8,6 +9,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
+#include "timehelper.h"
 
 //const int PORT = 8080;
 const int MAX_PACKET_LEN = 256;
@@ -101,9 +104,19 @@ int getIntInput(const std::string& prompt)
 
 int main()
 {
+    //std::string s;
+    //std::getline(std::cin, s);
+    //std::cout << s << "\n";
+    //std::cout << "hello world\n";
+
+    //std::cout << ctime((const time_t*)time(nullptr)) << "\n";
+
     /*std::random_device rd;
     std::mt19937 mt(rd());
     std::uniform_int_distribution<int> dist(1, 1000);*/
+    std::string clientName;
+    std::cout << "Enter your name: ";
+    std::cin >> clientName;
 
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socketFd < 0)
