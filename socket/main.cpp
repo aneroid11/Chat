@@ -158,6 +158,8 @@ void printDialogue(const std::list<Message>& history, const std::string& cl1Name
 {
     if (history.empty()) { return; }
 
+    std::cout << "\n";
+
     for (auto& msg : history)
     {
         if ((msg.sender == cl1Name || msg.sender == cl2Name) && (msg.receiver == cl1Name || msg.receiver == cl2Name))
