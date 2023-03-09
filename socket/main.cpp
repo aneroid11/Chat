@@ -212,7 +212,7 @@ int main()
                     }
                     else
                     {
-                        std::cout << "You have an incoming connection request\n";
+                        std::cout << "You have an incoming connection request from " << otherClientName << "\n";
                         const int acceptOrDecline = getUserChoice({"accept", "decline"});
 
                         if (acceptOrDecline == 0)
