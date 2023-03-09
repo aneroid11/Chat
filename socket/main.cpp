@@ -158,12 +158,9 @@ void receiveMessages(const std::string& clientName,
             sendMsg("!alive", socketFd, otherClientAddr, otherClientSocklen);
             lastAliveSent = system_clock::now();
         }
-        if (duration_cast<seconds>(now - lastAliveReceived).count() > 5)
+        if (duration_cast<seconds>(now - lastAliveReceived).count() > 4)
         {
-            std::cout << "\nCONNECTION LOST\n\n";
-
-            throw std::exception();
-
+            std::cout << "\nCONNECTION LOST. PRESS ENTER TO EXIT THE CONVERSATION\n\n";
             connectionLost = true;
             break;
         }
