@@ -126,7 +126,10 @@ void printMessageHistory(const std::list<Message>& history)
     }
 }
 
-void talk()
+void talk(const std::string& clientName,
+          const std::string& otherClientName,
+          const sockaddr_in& otherClientAddr,
+          const socklen_t otherClientSocklen)
 {
     std::cout << "Some conversation here...\n";
 }
@@ -223,7 +226,13 @@ int main()
 
                             std::cout << "You are connected to " << otherClientName << "\n";
 
-                            talk();
+                            // что передать в talk?
+                            // наше имя
+                            // имя того, с кем общаемся
+                            // наш адрес
+                            // адрес того, с кем общаемся
+                            //talk(clientName, otherClientName, sockaddrIn);
+                            talk(clientName, otherClientName, sockaddrIn, socklen);
                             break;
                         }
                         else
@@ -270,20 +279,17 @@ int main()
                     continue;
                 }
 
+                //std::cout << getIpPortFromSockaddr(sockaddrIn) << "\n";
+                //std::cout << getIpPortFromSockaddr(otherAddress) << "\n";
                 // if the response was sent from the same client
-                std::cout << getIpPortFromSockaddr(sockaddrIn) << "\n";
-                std::cout << getIpPortFromSockaddr(otherAddress) << "\n";
                 if (getIpPortFromSockaddr(sockaddrIn) == getIpPortFromSockaddr(otherAddress))
                 {
                     if (response[0] == (char)ACCEPT_REQUEST)
                     {
                         // get the other client name
                         otherClientName = response.substr(1);
-                        // what if the other client name == our name?
-                        // do not do anything for now
-
                         std::cout << "Your request was accepted by " << otherClientName << ".\n";
-                        talk();
+                        talk(clientName, otherClientName, sockaddrIn, socklen);
                         break;
                     }
                     else if (response[0] == (char)DECLINE_REQUEST)
