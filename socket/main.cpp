@@ -214,7 +214,46 @@ int main()
 
         if (choice == 0)
         {
+            sockaddr_in sockaddrIn {};
+            socklen_t socklen;
+            std::string otherClientName;
 
+            bool hasRequests = false;
+
+            while (true)
+            {
+                std::string msg;
+                if (receiveMsg(msg, socketFd, sockaddrIn, socklen) < 0)
+                {
+                    break;
+                }
+
+                /*
+                // if the response was sent from the same client
+                if (getIpPortFromSockaddr(sockaddrIn) == getIpPortFromSockaddr(otherAddress))
+                {
+                    if (response[0] == (char)ACCEPT_REQUEST)
+                    {
+                        // get the other client name
+                        otherClientName = response.substr(1);
+                        // what if the other client name == our name?
+                        // do not do anything for now
+
+                        std::cout << "Your request was accepted by " << otherClientName << ".\n";
+                        talk();
+                        break;
+                    }
+                    else if (response[0] == (char)DECLINE_REQUEST)
+                    {
+                        std::cout << "Your request was declined.\n";
+                        break;
+                    }
+                }*/
+            }
+            if (!hasRequests)
+            {
+                std::cout << "\nNo requests.\n\n";
+            }
 
             /*std::string msg;
             sockaddr_in addrBuf {};
