@@ -16,7 +16,7 @@
 const int MAX_PACKET_LEN = 256;
 const int TIMEOUT_MS = 100;
 
-const int REQUEST_FOR_CONNECTION = 0;
+const int REQUEST_FOR_CONNECTION = 3;
 const int ACCEPT_REQUEST = 1;
 const int DECLINE_REQUEST = 2;
 
@@ -226,6 +226,43 @@ int main()
                 if (receiveMsg(msg, socketFd, sockaddrIn, socklen) < 0)
                 {
                     break;
+                }
+
+                // что-то таки пришло. это что-то надо обработать.
+                if (msg[0] == (char)REQUEST_FOR_CONNECTION)
+                {
+                    hasRequests = true;
+                    otherClientName = msg.substr(1);
+
+                    if (clientName == otherClientName)
+                    {
+                        std::cout << "You cannot connect to yourself!\n";
+                        std::string response = std::string(1, (char)DECLINE_REQUEST);
+                        sendMsg(response, socketFd, sockaddrIn, socklen);
+                    }
+                    else
+                    {
+                        const int acceptOrDecline = getUserChoice({"accept", "decline"});
+
+                        if (acceptOrDecline == 0)
+                        {
+                            std::string response = std::string(1, (char)ACCEPT_REQUEST);
+                            response += clientName;
+                            sendMsg(response, socketFd, sockaddrIn, socklen);
+
+                            std::cout << "You are connected to " << otherClientName << "\n";
+
+                            talk();
+                            break;
+                        }
+                        else
+                        {
+                            std::string response = std::string(1, (char)DECLINE_REQUEST);
+                            sendMsg(response, socketFd, sockaddrIn, socklen);
+                            std::cout << "You declined the request.\n";
+                            break;
+                        }
+                    }
                 }
 
                 /*
