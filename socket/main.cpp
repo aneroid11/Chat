@@ -252,6 +252,9 @@ void talk(const std::string& clientName,
           const socklen_t otherClientSocklen,
           const int socketFd)
 {
+    stopReceivingMessages = false;
+    connectionLost = false;
+
     printDialogue(readMessageHistory(clientName), clientName, otherClientName);
     std::cout << "You can send your messages now. Enter !exit to finish the conversation\n";
 
