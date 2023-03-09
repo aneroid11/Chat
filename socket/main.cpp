@@ -129,9 +129,23 @@ void printMessageHistory(const std::list<Message>& history)
 void talk(const std::string& clientName,
           const std::string& otherClientName,
           const sockaddr_in& otherClientAddr,
-          const socklen_t otherClientSocklen)
+          const socklen_t otherClientSocklen,
+          const int socketFd)
 {
-    std::cout << "Some conversation here...\n";
+    std::cout << "You can send your messages now. Enter !exit to finish the conversation\n";
+
+    while (true)
+    {
+        std::string msgContents;
+        std::getline(std::cin, msgContents);
+
+        if (msgContents == "!exit")
+        {
+            break;
+        }
+
+        sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
+    }
 }
 
 int main()
@@ -232,7 +246,7 @@ int main()
                             // наш адрес
                             // адрес того, с кем общаемся
                             //talk(clientName, otherClientName, sockaddrIn);
-                            talk(clientName, otherClientName, sockaddrIn, socklen);
+                            talk(clientName, otherClientName, sockaddrIn, socklen, socketFd);
                             break;
                         }
                         else
@@ -289,7 +303,7 @@ int main()
                         // get the other client name
                         otherClientName = response.substr(1);
                         std::cout << "Your request was accepted by " << otherClientName << ".\n";
-                        talk(clientName, otherClientName, sockaddrIn, socklen);
+                        talk(clientName, otherClientName, sockaddrIn, socklen, socketFd);
                         break;
                     }
                     else if (response[0] == (char)DECLINE_REQUEST)
