@@ -114,19 +114,37 @@ int getIntInput(const std::string& prompt)
 std::list<Message> readMessageHistory(const std::string& clientName)
 {
     std::list<Message> ret;
-    ret.push_back(Message {"Man 1", "hello", "45:88"});
-    ret.push_back(Message {"Man 2", "hello", "45:11"});
-    ret.push_back(Message {"Man 3", "hello", "45:900"});
+    std::ifstream fin(clientName + ".dat");
+
+    while (fin)
+    {
+        Message msg {};
+        std::getline(fin, msg.sender);
+        std::getline(fin, msg.receiver);
+        std::getline(fin, msg.contents);
+        std::getline(fin, msg.timestamp);
+
+        ret.push_back(msg);
+    }
+
+    if (!ret.empty())
+    {
+        ret.pop_back();
+    }
+    fin.close();
+
     return ret;
 }
 
 void printMessageHistory(const std::list<Message>& history)
 {
+    if (history.empty()) { return; }
+
     std::cout << "\nMESSAGE HISTORY:\n\n";
 
     for (auto& msg : history)
     {
-        std::cout << "Message from " << msg.sender << " at " << msg.timestamp << "\n";
+        std::cout << "Message from " << msg.sender << " to " << msg.receiver << " at " << msg.timestamp << "\n";
         std::cout << msg.contents << "\n\n";
     }
 }
@@ -134,7 +152,7 @@ void printMessageHistory(const std::list<Message>& history)
 void saveMessage(const std::string& clientName, const Message& msg)
 {
     std::ofstream fout(clientName + ".dat", std::ios_base::app);
-    fout << msg.sender << "\n" << msg.receiver << "\n" << msg.contents << "\n";
+    fout << msg.sender << "\n" << msg.receiver << "\n" << msg.contents << "\n" << msg.timestamp << "\n";
     fout.close();
 }
 
@@ -193,10 +211,16 @@ void receiveMessages(const std::string& clientName,
         // we've got a new message! it can be a real message or "I am alive".
         if (recMsg != "!alive")
         {
-            std::cout << "\nNew message: \n";
+            const std::string tpStr = timePointToString(lastAliveReceived);
+            std::cout << "\nNew message from " << otherClientName << " at " << tpStr << "\n";
             std::cout << recMsg << "\n\n";
 
-            Message msgToSave {otherClientName, clientName, recMsg};
+            Message msgToSave {
+                otherClientName,
+                clientName,
+                recMsg,
+                tpStr
+            };
             saveMessage(clientName, msgToSave);
         }
     }
@@ -229,7 +253,13 @@ void talk(const std::string& clientName,
         }
 
         sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
-        Message msgToSave {clientName, otherClientName, msgContents};
+
+        Message msgToSave {
+                clientName,
+                otherClientName,
+                msgContents,
+                timePointToString(std::chrono::system_clock::now())
+        };
         saveMessage(clientName, msgToSave);
     }
 
