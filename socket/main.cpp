@@ -156,7 +156,6 @@ int main()
     sockaddr_in ourAddress {};
     memset(&ourAddress, 0, sizeof(ourAddress));
     ourAddress.sin_family = AF_INET;
-    //ourAddress.sin_addr.s_addr = INADDR_ANY;
     ourAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
     ourAddress.sin_port = htons(0); // any available port
 
@@ -213,6 +212,7 @@ int main()
                     }
                     else
                     {
+                        std::cout << "You have an incoming connection request\n";
                         const int acceptOrDecline = getUserChoice({"accept", "decline"});
 
                         if (acceptOrDecline == 0)
@@ -231,7 +231,7 @@ int main()
                             std::string response = std::string(1, (char)DECLINE_REQUEST);
                             sendMsg(response, socketFd, sockaddrIn, socklen);
                             std::cout << "You declined the request.\n";
-                            break;
+                            continue;
                         }
                     }
                 }
@@ -248,7 +248,6 @@ int main()
             memset(&otherAddress, 0, sizeof(otherAddress));
             otherAddress.sin_family = AF_INET;
             otherAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-            //otherAddress.sin_addr.s_addr = INADDR_ANY;
             otherAddress.sin_port = htons(otherPort);
 
             std::string msg = std::string(1, (char)REQUEST_FOR_CONNECTION);
@@ -272,8 +271,6 @@ int main()
                 }
 
                 // if the response was sent from the same client
-                // а они на самом деле не совпадают.
-
                 std::cout << getIpPortFromSockaddr(sockaddrIn) << "\n";
                 std::cout << getIpPortFromSockaddr(otherAddress) << "\n";
                 if (getIpPortFromSockaddr(sockaddrIn) == getIpPortFromSockaddr(otherAddress))
