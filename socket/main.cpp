@@ -133,16 +133,6 @@ void talk()
 
 int main()
 {
-    //std::string s;
-    //std::getline(std::cin, s);
-    //std::cout << s << "\n";
-    //std::cout << "hello world\n";
-
-    //std::cout << ctime((const time_t*)time(nullptr)) << "\n";
-
-    /*std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> dist(1, 1000);*/
     std::string clientName;
     std::cout << "Enter your name: ";
     std::cin >> clientName;
@@ -166,7 +156,8 @@ int main()
     sockaddr_in ourAddress {};
     memset(&ourAddress, 0, sizeof(ourAddress));
     ourAddress.sin_family = AF_INET;
-    ourAddress.sin_addr.s_addr = INADDR_ANY;
+    //ourAddress.sin_addr.s_addr = INADDR_ANY;
+    ourAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
     ourAddress.sin_port = htons(0); // any available port
 
     if (bind(socketFd, (const sockaddr*)&ourAddress, sizeof(ourAddress)) < 0)
@@ -186,28 +177,8 @@ int main()
     const int ourPort = htons(addr.sin_port);
     std::cout << "Bound to port " << ourPort << "\n";
 
-    //int otherPort = getIntInput("Enter the port of the other client: ");
-    //std::cout << "Enter !exit to finish your conversation.\n";
-
     while (true)
     {
-        /*sockaddr_in otherAddress {};
-        memset(&otherAddress, 0, sizeof(otherAddress));
-        otherAddress.sin_family = AF_INET;
-        otherAddress.sin_addr.s_addr = INADDR_ANY;
-        otherAddress.sin_port = htons(otherPort);
-
-        std::string message;
-        std::getline(std::cin, message);
-
-        if (message == "!exit")
-        {
-            break;
-        }
-
-        sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
-        std::cout << "Message sent.\n";*/
-
         const int choice = getUserChoice({
             "check for connection requests", "send a connection request"
         });
@@ -264,43 +235,11 @@ int main()
                         }
                     }
                 }
-
-                /*
-                // if the response was sent from the same client
-                if (getIpPortFromSockaddr(sockaddrIn) == getIpPortFromSockaddr(otherAddress))
-                {
-                    if (response[0] == (char)ACCEPT_REQUEST)
-                    {
-                        // get the other client name
-                        otherClientName = response.substr(1);
-                        // what if the other client name == our name?
-                        // do not do anything for now
-
-                        std::cout << "Your request was accepted by " << otherClientName << ".\n";
-                        talk();
-                        break;
-                    }
-                    else if (response[0] == (char)DECLINE_REQUEST)
-                    {
-                        std::cout << "Your request was declined.\n";
-                        break;
-                    }
-                }*/
             }
             if (!hasRequests)
             {
                 std::cout << "\nNo requests.\n\n";
             }
-
-            /*std::string msg;
-            sockaddr_in addrBuf {};
-            socklen_t lenBuf;
-
-            while (receiveMsg(msg, socketFd, addrBuf, lenBuf) >= 0)
-            {
-                std::cout << "Message from " << getIpPortFromSockaddr(addrBuf) << ":\n";
-                std::cout << msg << "\n";
-            }*/
         }
         else
         {
@@ -308,7 +247,8 @@ int main()
             sockaddr_in otherAddress {};
             memset(&otherAddress, 0, sizeof(otherAddress));
             otherAddress.sin_family = AF_INET;
-            otherAddress.sin_addr.s_addr = INADDR_ANY;
+            otherAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+            //otherAddress.sin_addr.s_addr = INADDR_ANY;
             otherAddress.sin_port = htons(otherPort);
 
             std::string msg = std::string(1, (char)REQUEST_FOR_CONNECTION);
@@ -332,6 +272,10 @@ int main()
                 }
 
                 // if the response was sent from the same client
+                // а они на самом деле не совпадают.
+
+                std::cout << getIpPortFromSockaddr(sockaddrIn) << "\n";
+                std::cout << getIpPortFromSockaddr(otherAddress) << "\n";
                 if (getIpPortFromSockaddr(sockaddrIn) == getIpPortFromSockaddr(otherAddress))
                 {
                     if (response[0] == (char)ACCEPT_REQUEST)
@@ -353,21 +297,6 @@ int main()
                 }
                 // else - ignore this message
             }
-
-            /*const int port = getIntInput("Enter the port of the other client: ");
-
-            sockaddr_in otherAddress {};
-            memset(&otherAddress, 0, sizeof(otherAddress));
-            otherAddress.sin_family = AF_INET;
-            otherAddress.sin_addr.s_addr = INADDR_ANY;
-            otherAddress.sin_port = htons(port);
-
-            std::string message;
-            std::cout << "Enter the message: ";
-            std::getline(std::cin, message);
-
-            sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
-            std::cout << "Message sent.\n";*/
         }
     }
 
