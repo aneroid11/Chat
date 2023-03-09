@@ -177,11 +177,28 @@ int main()
     const int ourPort = htons(addr.sin_port);
     std::cout << "Bound to port " << ourPort << "\n";
 
+    int otherPort = getIntInput("Enter the port of the other client: ");
+    std::cout << "Enter !exit to finish your conversation.\n";
+
     while (true)
     {
-        int choice = getUserChoice({"show incoming messages", "send a message"});
+        sockaddr_in otherAddress {};
+        memset(&otherAddress, 0, sizeof(otherAddress));
+        otherAddress.sin_family = AF_INET;
+        otherAddress.sin_addr.s_addr = INADDR_ANY;
+        otherAddress.sin_port = htons(otherPort);
 
-        if (choice == 0)
+        std::string message;
+        std::getline(std::cin, message);
+
+        if (message == "!exit")
+        {
+            break;
+        }
+
+        sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
+        std::cout << "Message sent.\n";
+        /*if (choice == 0)
         {
             std::string msg;
             sockaddr_in addrBuf {};
@@ -209,7 +226,7 @@ int main()
 
             sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
             std::cout << "Message sent.\n";
-        }
+        }*/
     }
 
     close(socketFd);
