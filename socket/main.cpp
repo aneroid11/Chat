@@ -1,5 +1,6 @@
 #include <iostream>
 //#include <sstream>
+#include <exception>
 #include <thread>
 #include <functional>
 #include <memory>
@@ -157,10 +158,12 @@ void receiveMessages(const std::string& clientName,
             sendMsg("!alive", socketFd, otherClientAddr, otherClientSocklen);
             lastAliveSent = system_clock::now();
         }
-
         if (duration_cast<seconds>(now - lastAliveReceived).count() > 5)
         {
             std::cout << "\nCONNECTION LOST\n\n";
+
+            throw std::exception();
+
             connectionLost = true;
             break;
         }
@@ -168,7 +171,6 @@ void receiveMessages(const std::string& clientName,
         // mutex for socketFd?
         if (receiveMsg(recMsg, socketFd, sockaddrIn, socklen) < 0)
         {
-            lastAliveReceived = system_clock::now();
             continue;
         }
 
@@ -180,6 +182,8 @@ void receiveMessages(const std::string& clientName,
             sendMsg(response, socketFd, sockaddrIn, socklen);
             continue;
         }
+
+        lastAliveReceived = system_clock::now();
 
         // we've got a new message! it can be a real message or "I am alive".
         if (recMsg != "!alive")
@@ -198,28 +202,35 @@ void talk(const std::string& clientName,
 {
     std::cout << "You can send your messages now. Enter !exit to finish the conversation\n";
 
-    std::thread recMsgs(std::bind(receiveMessages,
-                                  std::cref(clientName),
-                                  std::cref(otherClientName),
-                                  std::cref(otherClientAddr),
-                                  otherClientSocklen,
-                                  socketFd));
-
-    while (true)
+    try
     {
-        std::string msgContents;
-        std::getline(std::cin, msgContents);
+        std::thread recMsgs(std::bind(receiveMessages,
+                                      std::cref(clientName),
+                                      std::cref(otherClientName),
+                                      std::cref(otherClientAddr),
+                                      otherClientSocklen,
+                                      socketFd));
 
-        if (msgContents == "!exit" || connectionLost)
+        while (true)
         {
-            stopReceivingMessages = true;
-            break;
+            std::string msgContents;
+            std::getline(std::cin, msgContents);
+
+            if (msgContents == "!exit" || connectionLost)
+            {
+                stopReceivingMessages = true;
+                break;
+            }
+
+            sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
         }
 
-        sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
+        recMsgs.join();
     }
-
-    recMsgs.join();
+    catch (...)
+    {
+        std::cout << "some exception\n";
+    }
 }
 
 int main()
