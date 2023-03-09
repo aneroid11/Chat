@@ -137,8 +137,6 @@ void receiveMessages(const std::string& clientName,
                      const socklen_t otherClientSocklen,
                      const int socketFd)
 {
-    //std::cout << "I am receiving messages and displaying them\n";
-
     std::string recMsg;
     sockaddr_in sockaddrIn {};
     socklen_t socklen;
@@ -148,6 +146,15 @@ void receiveMessages(const std::string& clientName,
         // mutex for socketFd?
         if (receiveMsg(recMsg, socketFd, sockaddrIn, socklen) < 0)
         {
+            continue;
+        }
+
+        if (getIpPortFromSockaddr(sockaddrIn) != getIpPortFromSockaddr(otherClientAddr))
+        {
+            // this message can only be a request for connection
+            // so we need to decline it.
+            std::string response = std::string(1, (char)DECLINE_REQUEST);
+            sendMsg(response, socketFd, sockaddrIn, socklen);
             continue;
         }
 
