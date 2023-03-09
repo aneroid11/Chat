@@ -131,35 +131,62 @@ void printMessageHistory(const std::list<Message>& history)
 
 // what?
 bool stopReceivingMessages = false;
+bool connectionLost = false;
 void receiveMessages(const std::string& clientName,
                      const std::string& otherClientName,
                      const sockaddr_in& otherClientAddr,
                      const socklen_t otherClientSocklen,
                      const int socketFd)
 {
+    using namespace std::chrono;
+
     std::string recMsg;
     sockaddr_in sockaddrIn {};
     socklen_t socklen;
 
+    auto lastAliveReceived = system_clock::now();
+
+    sendMsg("!alive", socketFd, otherClientAddr, otherClientSocklen);
+    auto lastAliveSent = system_clock::now();
+
     while (!stopReceivingMessages)
     {
+        auto now = system_clock::now();
+        if (duration_cast<seconds>(now - lastAliveSent).count() > 2)
+        {
+            sendMsg("!alive", socketFd, otherClientAddr, otherClientSocklen);
+            lastAliveSent = system_clock::now();
+        }
+
+        if (duration_cast<seconds>(now - lastAliveReceived).count() > 5)
+        {
+            std::cout << "\nCONNECTION LOST\n\n";
+            connectionLost = true;
+            break;
+        }
+
         // mutex for socketFd?
         if (receiveMsg(recMsg, socketFd, sockaddrIn, socklen) < 0)
         {
+            lastAliveReceived = system_clock::now();
             continue;
         }
 
         if (getIpPortFromSockaddr(sockaddrIn) != getIpPortFromSockaddr(otherClientAddr))
         {
-            // this message can only be a request for connection
+            // this message can only be a request for connection,
             // so we need to decline it.
             std::string response = std::string(1, (char)DECLINE_REQUEST);
             sendMsg(response, socketFd, sockaddrIn, socklen);
             continue;
         }
 
-        std::cout << "New message: \n";
-        std::cout << recMsg << "\n\n";
+        // we've got a new message! it can be a real message or "I am alive".
+        if (recMsg != "!alive")
+        {
+            std::cout << "\nNew message: \n";
+            std::cout << recMsg << "\n\n";
+        }
     }
 }
 
@@ -183,7 +210,7 @@ void talk(const std::string& clientName,
         std::string msgContents;
         std::getline(std::cin, msgContents);
 
-        if (msgContents == "!exit")
+        if (msgContents == "!exit" || connectionLost)
         {
             stopReceivingMessages = true;
             break;
@@ -287,12 +314,6 @@ int main()
 
                             std::cout << "You are connected to " << otherClientName << "\n";
 
-                            // что передать в talk?
-                            // наше имя
-                            // имя того, с кем общаемся
-                            // наш адрес
-                            // адрес того, с кем общаемся
-                            //talk(clientName, otherClientName, sockaddrIn);
                             talk(clientName, otherClientName, sockaddrIn, socklen, socketFd);
                             break;
                         }
