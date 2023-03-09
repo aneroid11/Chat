@@ -136,6 +136,12 @@ std::list<Message> readMessageHistory(const std::string& clientName)
     return ret;
 }
 
+void printMessage(const Message& msg)
+{
+    std::cout << "Message from " << msg.sender << " to " << msg.receiver << " at " << msg.timestamp << "\n";
+    std::cout << msg.contents << "\n\n";
+}
+
 void printMessageHistory(const std::list<Message>& history)
 {
     if (history.empty()) { return; }
@@ -144,8 +150,20 @@ void printMessageHistory(const std::list<Message>& history)
 
     for (auto& msg : history)
     {
-        std::cout << "Message from " << msg.sender << " to " << msg.receiver << " at " << msg.timestamp << "\n";
-        std::cout << msg.contents << "\n\n";
+        printMessage(msg);
+    }
+}
+
+void printDialogue(const std::list<Message>& history, const std::string& cl1Name, const std::string& cl2Name)
+{
+    if (history.empty()) { return; }
+
+    for (auto& msg : history)
+    {
+        if ((msg.sender == cl1Name || msg.sender == cl2Name) && (msg.receiver == cl1Name || msg.receiver == cl2Name))
+        {
+            printMessage(msg);
+        }
     }
 }
 
@@ -232,6 +250,7 @@ void talk(const std::string& clientName,
           const socklen_t otherClientSocklen,
           const int socketFd)
 {
+    printDialogue(readMessageHistory(clientName), clientName, otherClientName);
     std::cout << "You can send your messages now. Enter !exit to finish the conversation\n";
 
     std::thread recMsgs(std::bind(receiveMessages,
@@ -271,8 +290,6 @@ int main()
     std::string clientName;
     std::cout << "Enter your name: ";
     std::cin >> clientName;
-
-    printMessageHistory(readMessageHistory(clientName));
 
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socketFd < 0)
@@ -314,7 +331,7 @@ int main()
     while (true)
     {
         const int choice = getUserChoice({
-            "check for connection requests", "send a connection request"
+            "check for connection requests", "send a connection request", "show message history"
         });
 
         if (choice == 0)
@@ -376,7 +393,7 @@ int main()
                 std::cout << "\nNo requests.\n\n";
             }
         }
-        else
+        else if (choice == 1)
         {
             const int otherPort = getIntInput("Enter the port of the other client: ");
             sockaddr_in otherAddress {};
@@ -426,6 +443,10 @@ int main()
                 }
                 // else - ignore this message
             }
+        }
+        else
+        {
+            printMessageHistory(readMessageHistory(clientName));
         }
     }
 
