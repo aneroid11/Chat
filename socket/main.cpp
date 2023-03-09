@@ -1,7 +1,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
-//#include <random>
+#include <list>
 #include <cstring>
 #include <chrono>
 
@@ -11,8 +11,8 @@
 #include <netinet/in.h>
 
 #include "timehelper.h"
+#include "message.h"
 
-//const int PORT = 8080;
 const int MAX_PACKET_LEN = 256;
 const int TIMEOUT_MS = 100;
 
@@ -102,6 +102,26 @@ int getIntInput(const std::string& prompt)
     return input;
 }
 
+std::list<Message> readMessageHistory(const std::string& clientName)
+{
+    std::list<Message> ret;
+    ret.push_back(Message {"Man 1", "hello", "45:88"});
+    ret.push_back(Message {"Man 2", "hello", "45:11"});
+    ret.push_back(Message {"Man 3", "hello", "45:900"});
+    return ret;
+}
+
+void printMessageHistory(const std::list<Message>& history)
+{
+    std::cout << "\nMESSAGE HISTORY:\n\n";
+
+    for (auto& msg : history)
+    {
+        std::cout << "Message from " << msg.sender << " at " << msg.timestamp << "\n";
+        std::cout << msg.contents << "\n\n";
+    }
+}
+
 int main()
 {
     //std::string s;
@@ -117,6 +137,8 @@ int main()
     std::string clientName;
     std::cout << "Enter your name: ";
     std::cin >> clientName;
+
+    printMessageHistory(readMessageHistory(clientName));
 
     const int socketFd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socketFd < 0)

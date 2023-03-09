@@ -3,4 +3,4 @@ project(socket)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(socket main.cpp Message.h timehelper.h timehelper.cpp)
+add_executable(socket main.cpp message.h timehelper.h timehelper.cpp)
