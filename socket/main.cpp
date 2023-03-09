@@ -129,13 +129,31 @@ void printMessageHistory(const std::list<Message>& history)
     }
 }
 
+// what?
+bool stopReceivingMessages = false;
 void receiveMessages(const std::string& clientName,
                      const std::string& otherClientName,
                      const sockaddr_in& otherClientAddr,
                      const socklen_t otherClientSocklen,
                      const int socketFd)
 {
-    std::cout << "I am receiving messages and displaying them\n";
+    //std::cout << "I am receiving messages and displaying them\n";
+
+    std::string recMsg;
+    sockaddr_in sockaddrIn {};
+    socklen_t socklen;
+
+    while (!stopReceivingMessages)
+    {
+        // mutex for socketFd?
+        if (receiveMsg(recMsg, socketFd, sockaddrIn, socklen) < 0)
+        {
+            continue;
+        }
+
+        std::cout << "New message: \n";
+        std::cout << recMsg << "\n\n";
+    }
 }
 
 void talk(const std::string& clientName,
@@ -160,6 +178,7 @@ void talk(const std::string& clientName,
 
         if (msgContents == "!exit")
         {
+            stopReceivingMessages = true;
             break;
         }
 
