@@ -1,5 +1,8 @@
 #include <iostream>
-#include <sstream>
+//#include <sstream>
+#include <thread>
+#include <functional>
+#include <memory>
 #include <vector>
 #include <list>
 #include <cstring>
@@ -126,6 +129,15 @@ void printMessageHistory(const std::list<Message>& history)
     }
 }
 
+void receiveMessages(const std::string& clientName,
+                     const std::string& otherClientName,
+                     const sockaddr_in& otherClientAddr,
+                     const socklen_t otherClientSocklen,
+                     const int socketFd)
+{
+    std::cout << "I am receiving messages and displaying them\n";
+}
+
 void talk(const std::string& clientName,
           const std::string& otherClientName,
           const sockaddr_in& otherClientAddr,
@@ -133,6 +145,13 @@ void talk(const std::string& clientName,
           const int socketFd)
 {
     std::cout << "You can send your messages now. Enter !exit to finish the conversation\n";
+
+    std::thread recMsgs(std::bind(receiveMessages,
+                                  std::cref(clientName),
+                                  std::cref(otherClientName),
+                                  std::cref(otherClientAddr),
+                                  otherClientSocklen,
+                                  socketFd));
 
     while (true)
     {
@@ -146,6 +165,8 @@ void talk(const std::string& clientName,
 
         sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
     }
+
+    recMsgs.join();
 }
 
 int main()
