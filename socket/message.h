@@ -10,7 +10,7 @@
 
 class Message {
 public:
-    std::string sender, contents;
+    std::string sender, receiver, contents;
     std::string timestamp;
 };
 

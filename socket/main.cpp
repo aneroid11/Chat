@@ -1,5 +1,6 @@
 #include <iostream>
 //#include <sstream>
+#include <fstream>
 #include <exception>
 #include <thread>
 #include <functional>
@@ -130,6 +131,13 @@ void printMessageHistory(const std::list<Message>& history)
     }
 }
 
+void saveMessage(const std::string& clientName, const Message& msg)
+{
+    std::ofstream fout(clientName + ".dat", std::ios_base::app);
+    fout << msg.sender << "\n" << msg.receiver << "\n" << msg.contents << "\n";
+    fout.close();
+}
+
 // what?
 bool stopReceivingMessages = false;
 bool connectionLost = false;
@@ -187,6 +195,9 @@ void receiveMessages(const std::string& clientName,
         {
             std::cout << "\nNew message: \n";
             std::cout << recMsg << "\n\n";
+
+            Message msgToSave {otherClientName, clientName, recMsg};
+            saveMessage(clientName, msgToSave);
         }
     }
 }
@@ -199,35 +210,30 @@ void talk(const std::string& clientName,
 {
     std::cout << "You can send your messages now. Enter !exit to finish the conversation\n";
 
-    try
+    std::thread recMsgs(std::bind(receiveMessages,
+                                  std::cref(clientName),
+                                  std::cref(otherClientName),
+                                  std::cref(otherClientAddr),
+                                  otherClientSocklen,
+                                  socketFd));
+
+    while (true)
     {
-        std::thread recMsgs(std::bind(receiveMessages,
-                                      std::cref(clientName),
-                                      std::cref(otherClientName),
-                                      std::cref(otherClientAddr),
-                                      otherClientSocklen,
-                                      socketFd));
+        std::string msgContents;
+        std::getline(std::cin, msgContents);
 
-        while (true)
+        if (msgContents == "!exit" || connectionLost)
         {
-            std::string msgContents;
-            std::getline(std::cin, msgContents);
-
-            if (msgContents == "!exit" || connectionLost)
-            {
-                stopReceivingMessages = true;
-                break;
-            }
-
-            sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
+            stopReceivingMessages = true;
+            break;
         }
 
-        recMsgs.join();
+        sendMsg(msgContents, socketFd, otherClientAddr, otherClientSocklen);
+        Message msgToSave {clientName, otherClientName, msgContents};
+        saveMessage(clientName, msgToSave);
     }
-    catch (...)
-    {
-        std::cout << "some exception\n";
-    }
+
+    recMsgs.join();
 }
 
 int main()
