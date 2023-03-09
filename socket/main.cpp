@@ -16,6 +16,10 @@
 const int MAX_PACKET_LEN = 256;
 const int TIMEOUT_MS = 100;
 
+const int REQUEST_FOR_CONNECTION = 0;
+const int ACCEPT_REQUEST = 1;
+const int DECLINE_REQUEST = 2;
+
 int getUserChoice(const std::vector<std::string>& options)
 {
     const size_t numOptions = options.size();
@@ -122,6 +126,11 @@ void printMessageHistory(const std::list<Message>& history)
     }
 }
 
+void talk()
+{
+    std::cout << "Some conversation here...\n";
+}
+
 int main()
 {
     //std::string s;
@@ -177,12 +186,12 @@ int main()
     const int ourPort = htons(addr.sin_port);
     std::cout << "Bound to port " << ourPort << "\n";
 
-    int otherPort = getIntInput("Enter the port of the other client: ");
-    std::cout << "Enter !exit to finish your conversation.\n";
+    //int otherPort = getIntInput("Enter the port of the other client: ");
+    //std::cout << "Enter !exit to finish your conversation.\n";
 
     while (true)
     {
-        sockaddr_in otherAddress {};
+        /*sockaddr_in otherAddress {};
         memset(&otherAddress, 0, sizeof(otherAddress));
         otherAddress.sin_family = AF_INET;
         otherAddress.sin_addr.s_addr = INADDR_ANY;
@@ -197,10 +206,17 @@ int main()
         }
 
         sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
-        std::cout << "Message sent.\n";
-        /*if (choice == 0)
+        std::cout << "Message sent.\n";*/
+
+        const int choice = getUserChoice({
+            "check for connection requests", "send a connection request"
+        });
+
+        if (choice == 0)
         {
-            std::string msg;
+
+
+            /*std::string msg;
             sockaddr_in addrBuf {};
             socklen_t lenBuf;
 
@@ -208,11 +224,61 @@ int main()
             {
                 std::cout << "Message from " << getIpPortFromSockaddr(addrBuf) << ":\n";
                 std::cout << msg << "\n";
-            }
+            }*/
         }
         else
         {
-            const int port = getIntInput("Enter the port of the other client: ");
+            const int otherPort = getIntInput("Enter the port of the other client: ");
+            sockaddr_in otherAddress {};
+            memset(&otherAddress, 0, sizeof(otherAddress));
+            otherAddress.sin_family = AF_INET;
+            otherAddress.sin_addr.s_addr = INADDR_ANY;
+            otherAddress.sin_port = htons(otherPort);
+
+            std::string msg = std::string(1, (char)REQUEST_FOR_CONNECTION);
+            msg += clientName;
+            sendMsg(msg, socketFd, otherAddress, sizeof(otherAddress));
+
+            std::cout << "The connection request was sent. Please wait...\n";
+
+            sockaddr_in sockaddrIn {};
+            socklen_t socklen;
+            std::string otherClientName;
+
+            // wait for accept or decline
+            while (true)
+            {
+                std::string response;
+
+                if (receiveMsg(response, socketFd, sockaddrIn, socklen) < 0)
+                {
+                    continue;
+                }
+
+                // if the response was sent from the same client
+                if (getIpPortFromSockaddr(sockaddrIn) == getIpPortFromSockaddr(otherAddress))
+                {
+                    if (response[0] == (char)ACCEPT_REQUEST)
+                    {
+                        // get the other client name
+                        otherClientName = response.substr(1);
+                        // what if the other client name == our name?
+                        // do not do anything for now
+
+                        std::cout << "Your request was accepted by " << otherClientName << ".\n";
+                        talk();
+                        break;
+                    }
+                    else if (response[0] == (char)DECLINE_REQUEST)
+                    {
+                        std::cout << "Your request was declined.\n";
+                        break;
+                    }
+                }
+                // else - ignore this message
+            }
+
+            /*const int port = getIntInput("Enter the port of the other client: ");
 
             sockaddr_in otherAddress {};
             memset(&otherAddress, 0, sizeof(otherAddress));
@@ -225,8 +291,8 @@ int main()
             std::getline(std::cin, message);
 
             sendMsg(message, socketFd, otherAddress, sizeof(otherAddress));
-            std::cout << "Message sent.\n";
-        }*/
+            std::cout << "Message sent.\n";*/
+        }
     }
 
     close(socketFd);
