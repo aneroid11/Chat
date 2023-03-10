@@ -1,10 +1,10 @@
 #include <iostream>
-//#include <sstream>
+#include <iomanip>
 #include <fstream>
+#include <sstream>
 #include <exception>
 #include <thread>
 #include <functional>
-#include <memory>
 #include <vector>
 #include <list>
 #include <cstring>
@@ -20,6 +20,9 @@
 
 const int MAX_PACKET_LEN = 256;
 const int TIMEOUT_MS = 100;
+
+const int SECONDS_TO_SEND_ALIVE = 1;
+const int SECONDS_TO_DISCONNECT = 2;
 
 const int REQUEST_FOR_CONNECTION = 3;
 const int ACCEPT_REQUEST = 1;
@@ -72,7 +75,7 @@ std::string getIpPortFromSockaddr(const sockaddr_in& sockAddr)
     return std::string(ip) + ":" + std::to_string(port);
 }
 
-std::string currTimeMcs()
+std::string currTimeNanoseconds()
 {
     auto now = std::chrono::high_resolution_clock::now();
     return std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count());
@@ -111,6 +114,18 @@ int getIntInput(const std::string& prompt)
     return input;
 }
 
+bool isTimestamp(const std::string& str)
+{
+    std::tm tm = {};
+    std::stringstream ss(str);
+    ss >> std::get_time(&tm, "%a %b %d %H:%M:%S %Y");
+    if (ss.fail())
+    {
+        return false;
+    }
+    return true;
+}
+
 std::list<Message> readMessageHistory(const std::string& clientName)
 {
     std::list<Message> ret;
@@ -125,6 +140,12 @@ std::list<Message> readMessageHistory(const std::string& clientName)
         std::getline(fin, msg.timestamp);
 
         ret.push_back(msg);
+
+        if (!isTimestamp(msg.timestamp))
+        {
+            // file is corrupted, stop
+            break;
+        }
     }
 
     if (!ret.empty())
@@ -199,12 +220,12 @@ void receiveMessages(const std::string& clientName,
     while (!stopReceivingMessages)
     {
         auto now = system_clock::now();
-        if (duration_cast<seconds>(now - lastAliveSent).count() > 2)
+        if (duration_cast<seconds>(now - lastAliveSent).count() > SECONDS_TO_SEND_ALIVE)
         {
             sendMsg("!alive", socketFd, otherClientAddr, otherClientSocklen);
             lastAliveSent = system_clock::now();
         }
-        if (duration_cast<seconds>(now - lastAliveReceived).count() > 4)
+        if (duration_cast<seconds>(now - lastAliveReceived).count() > SECONDS_TO_DISCONNECT)
         {
             std::cout << "\nCONNECTION LOST. PRESS ENTER TO EXIT THE CONVERSATION\n\n";
             connectionLost = true;
