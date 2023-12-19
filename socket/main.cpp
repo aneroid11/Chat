@@ -334,6 +334,8 @@ int main()
     sockaddr_in ourAddress {};
     memset(&ourAddress, 0, sizeof(ourAddress));
     ourAddress.sin_family = AF_INET;
+//    std::string ip;
+//    std::cin >> ip;
     ourAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
     ourAddress.sin_port = htons(0); // any available port
 
@@ -425,7 +427,10 @@ int main()
             sockaddr_in otherAddress {};
             memset(&otherAddress, 0, sizeof(otherAddress));
             otherAddress.sin_family = AF_INET;
-            otherAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+            std::string ip;
+            std::cout << "Enter ip to connect: ";
+            std::cin >> ip;
+            otherAddress.sin_addr.s_addr = inet_addr(ip.c_str());
             otherAddress.sin_port = htons(otherPort);
 
             std::string msg = std::string(1, (char)REQUEST_FOR_CONNECTION);
